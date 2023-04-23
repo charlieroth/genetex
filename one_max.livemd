@@ -1,0 +1,1233 @@
+<!-- livebook:{"persist_outputs":true} -->
+
+# Genetic Algorithms In Exlixir: One Max
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.9.2"}
+])
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+:ok
+```
+
+## The One-Max Problem
+
+The One-Max problem is a trivial problem often used to introduce the concept of genetic algorithms. It's incredibly simple, but it's great for introducing many of the critical aspects of a genetic algorithm.
+
+The problem boils down to one question: what is the maximum sum of a bitstring (a string consisting of only 1s and 0s) of length N?
+
+<!-- livebook:{"break_markdown":true} -->
+
+#### Overview Of A Genetic Algorithm
+
+```mermaid
+graph LR;
+
+A[Initialize Population]-->B[Evaluate Population]
+B-->C[Select Parents]
+C-->D[Create Children]
+D-->E[Mutate Children]
+E-->B
+```
+
+Each step in this visualization performs a transformation and brings you closer to a solution
+
+Most Genetic Algorithms follow a similar structure to the above diagram
+
+## Initializing The Population
+
+```elixir
+population = for _ <- 1..100, do: for(_ <- 1..1000, do: Enum.random(0..1))
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+[
+  [0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1,
+   1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, ...],
+  [0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0,
+   1, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, ...],
+  [0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0,
+   1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, ...],
+  [1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0,
+   1, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, ...],
+  [0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0,
+   0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, ...],
+  [1, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1,
+   1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, ...],
+  [1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0,
+   1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, ...],
+  [1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0,
+   0, 0, 1, 1, 0, 0, 1, 1, 0, 0, ...],
+  [1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1,
+   1, 1, 1, 0, 1, 1, 0, 1, 0, ...],
+  [0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0,
+   0, 0, 0, 1, 0, 1, 1, 1, ...],
+  [1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 1,
+   0, 0, 0, 0, 0, 0, 0, ...],
+  [1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1,
+   1, 1, 0, 1, 1, 0, ...],
+  [1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0,
+   0, 1, 1, 0, 1, ...],
+  [1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0,
+   0, 0, 1, 0, ...],
+  [1, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0,
+   1, 1, 0, ...],
+  [1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0,
+   1, 0, ...],
+  [1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1,
+   1, ...],
+  [1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1,
+   ...],
+  [0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, ...],
+  [1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1, ...],
+  [1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, ...],
+  [1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, ...],
+  [0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 1, ...],
+  [1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, ...],
+  [1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1, ...],
+  [1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 0, ...],
+  [1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, ...],
+  [0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 1, ...],
+  [1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, ...],
+  [0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, ...],
+  [1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, ...],
+  [0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, ...],
+  [1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, ...],
+  [1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, ...],
+  [0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, ...],
+  [1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 0, ...],
+  [0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 1, ...],
+  [0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, ...],
+  [0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, ...],
+  [1, 0, 0, 1, 1, 0, 1, 1, 1, 0, ...],
+  [1, 0, 1, 1, 0, 1, 0, 0, 1, ...],
+  [1, 1, 1, 1, 0, 1, 1, 0, ...],
+  [0, 0, 0, 0, 1, 0, 1, ...],
+  [0, 1, 1, 1, 1, 0, ...],
+  [0, 1, 1, 1, 0, ...],
+  [1, 1, 1, 1, ...],
+  [1, 1, 0, ...],
+  [1, 1, ...],
+  [0, ...],
+  [...],
+  ...
+]
+```
+
+## The Flow of Genetic Algorithms
+
+```elixir
+evaluate = fn population ->
+  Enum.sort_by(population, &Enum.sum/1, &>=/2)
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+#Function<42.3316493/1 in :erl_eval.expr/6>
+```
+
+```elixir
+selection = fn population ->
+  population
+  |> Enum.chunk_every(2)
+  |> Enum.map(&List.to_tuple(&1))
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+#Function<42.3316493/1 in :erl_eval.expr/6>
+```
+
+```elixir
+crossover = fn population ->
+  population
+  |> Enum.reduce([], fn {p1, p2}, acc ->
+    cx_point = :rand.uniform(1000)
+    {{h1, t1}, {h2, t2}} = {Enum.split(p1, cx_point), Enum.split(p2, cx_point)}
+    [h1 ++ t2, h2 ++ t1 | acc]
+  end)
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+#Function<42.3316493/1 in :erl_eval.expr/6>
+```
+
+```elixir
+mutation = fn population ->
+  population
+  |> Enum.map(fn chromose ->
+    if :rand.uniform() < 0.05 do
+      Enum.shuffle(chromose)
+    else
+      chromose
+    end
+  end)
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+#Function<42.3316493/1 in :erl_eval.expr/6>
+```
+
+```elixir
+algorithm = fn population, algorithm ->
+  best = population |> Enum.max_by(&Enum.sum/1)
+  best_sum = best |> Enum.sum()
+
+  IO.puts("Current best: #{best_sum}")
+
+  if best_sum == 1000 do
+    best
+  else
+    # Initial population
+    population
+    # Evaluate population
+    |> evaluate.()
+    # Select parents
+    |> selection.()
+    # Create children
+    |> crossover.()
+    # Mutate the population
+    |> mutation.()
+    # Repeat the process with new population
+    |> algorithm.(algorithm)
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+#Function<41.3316493/2 in :erl_eval.expr/6>
+```
+
+```elixir
+solution = algorithm.(population, algorithm)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+...
+Current best: 988
+Current best: 984
+Current best: 980
+Current best: 981
+Current best: 981
+Current best: 984
+Current best: 981
+Current best: 980
+Current best: 980
+Current best: 980
+Current best: 982
+Current best: 981
+Current best: 981
+Current best: 980
+Current best: 983
+Current best: 983
+Current best: 980
+Current best: 984
+Current best: 980
+Current best: 982
+Current best: 980
+Current best: 980
+Current best: 982
+Current best: 981
+Current best: 982
+Current best: 983
+Current best: 983
+Current best: 984
+Current best: 983
+Current best: 980
+Current best: 982
+Current best: 983
+Current best: 981
+Current best: 981
+Current best: 981
+Current best: 981
+Current best: 980
+Current best: 982
+Current best: 981
+Current best: 983
+Current best: 981
+Current best: 980
+Current best: 981
+Current best: 982
+Current best: 980
+Current best: 983
+Current best: 982
+Current best: 983
+Current best: 982
+Current best: 982
+Current best: 981
+Current best: 982
+Current best: 982
+Current best: 981
+Current best: 983
+Current best: 982
+Current best: 981
+Current best: 983
+Current best: 981
+Current best: 982
+Current best: 983
+Current best: 983
+Current best: 982
+Current best: 984
+Current best: 982
+Current best: 981
+Current best: 981
+Current best: 983
+Current best: 981
+Current best: 989
+Current best: 984
+Current best: 990
+Current best: 983
+Current best: 983
+Current best: 984
+Current best: 982
+Current best: 983
+Current best: 982
+Current best: 983
+Current best: 984
+Current best: 984
+Current best: 983
+Current best: 985
+Current best: 982
+Current best: 983
+Current best: 982
+Current best: 983
+Current best: 983
+Current best: 985
+Current best: 984
+Current best: 983
+Current best: 986
+Current best: 985
+Current best: 984
+Current best: 984
+Current best: 985
+Current best: 982
+Current best: 985
+Current best: 985
+Current best: 984
+Current best: 986
+Current best: 983
+Current best: 983
+Current best: 982
+Current best: 984
+Current best: 983
+Current best: 982
+Current best: 984
+Current best: 988
+Current best: 984
+Current best: 984
+Current best: 984
+Current best: 985
+Current best: 982
+Current best: 984
+Current best: 984
+Current best: 984
+Current best: 984
+Current best: 984
+Current best: 983
+Current best: 986
+Current best: 985
+Current best: 983
+Current best: 983
+Current best: 984
+Current best: 985
+Current best: 984
+Current best: 985
+Current best: 984
+Current best: 982
+Current best: 982
+Current best: 982
+Current best: 982
+Current best: 983
+Current best: 983
+Current best: 983
+Current best: 983
+Current best: 982
+Current best: 982
+Current best: 982
+Current best: 982
+Current best: 982
+Current best: 982
+Current best: 982
+Current best: 982
+Current best: 984
+Current best: 984
+Current best: 984
+Current best: 982
+Current best: 984
+Current best: 982
+Current best: 986
+Current best: 988
+Current best: 982
+Current best: 985
+Current best: 984
+Current best: 986
+Current best: 984
+Current best: 986
+Current best: 983
+Current best: 984
+Current best: 984
+Current best: 984
+Current best: 985
+Current best: 986
+Current best: 985
+Current best: 986
+Current best: 986
+Current best: 983
+Current best: 982
+Current best: 983
+Current best: 982
+Current best: 982
+Current best: 987
+Current best: 989
+Current best: 985
+Current best: 984
+Current best: 985
+Current best: 989
+Current best: 987
+Current best: 982
+Current best: 982
+Current best: 989
+Current best: 984
+Current best: 983
+Current best: 984
+Current best: 985
+Current best: 987
+Current best: 986
+Current best: 983
+Current best: 982
+Current best: 986
+Current best: 984
+Current best: 986
+Current best: 985
+Current best: 983
+Current best: 984
+Current best: 983
+Current best: 983
+Current best: 985
+Current best: 985
+Current best: 983
+Current best: 982
+Current best: 983
+Current best: 985
+Current best: 984
+Current best: 982
+Current best: 983
+Current best: 982
+Current best: 983
+Current best: 985
+Current best: 984
+Current best: 983
+Current best: 986
+Current best: 985
+Current best: 986
+Current best: 984
+Current best: 982
+Current best: 984
+Current best: 985
+Current best: 982
+Current best: 982
+Current best: 983
+Current best: 982
+Current best: 983
+Current best: 985
+Current best: 986
+Current best: 983
+Current best: 982
+Current best: 982
+Current best: 983
+Current best: 983
+Current best: 982
+Current best: 983
+Current best: 982
+Current best: 983
+Current best: 982
+Current best: 984
+Current best: 983
+Current best: 986
+Current best: 984
+Current best: 983
+Current best: 987
+Current best: 986
+Current best: 988
+Current best: 989
+Current best: 984
+Current best: 989
+Current best: 988
+Current best: 990
+Current best: 990
+Current best: 988
+Current best: 988
+Current best: 987
+Current best: 987
+Current best: 985
+Current best: 985
+Current best: 985
+Current best: 985
+Current best: 987
+Current best: 990
+Current best: 985
+Current best: 986
+Current best: 987
+Current best: 988
+Current best: 987
+Current best: 986
+Current best: 987
+Current best: 987
+Current best: 985
+Current best: 985
+Current best: 988
+Current best: 985
+Current best: 985
+Current best: 985
+Current best: 989
+Current best: 985
+Current best: 986
+Current best: 986
+Current best: 985
+Current best: 986
+Current best: 985
+Current best: 986
+Current best: 989
+Current best: 990
+Current best: 989
+Current best: 990
+Current best: 989
+Current best: 987
+Current best: 989
+Current best: 987
+Current best: 986
+Current best: 985
+Current best: 986
+Current best: 985
+Current best: 985
+Current best: 986
+Current best: 986
+Current best: 985
+Current best: 986
+Current best: 986
+Current best: 986
+Current best: 987
+Current best: 990
+Current best: 989
+Current best: 986
+Current best: 986
+Current best: 988
+Current best: 988
+Current best: 988
+Current best: 988
+Current best: 988
+Current best: 987
+Current best: 986
+Current best: 988
+Current best: 986
+Current best: 986
+Current best: 985
+Current best: 986
+Current best: 985
+Current best: 987
+Current best: 988
+Current best: 986
+Current best: 985
+Current best: 988
+Current best: 985
+Current best: 988
+Current best: 986
+Current best: 988
+Current best: 986
+Current best: 988
+Current best: 990
+Current best: 988
+Current best: 988
+Current best: 986
+Current best: 988
+Current best: 990
+Current best: 988
+Current best: 992
+Current best: 986
+Current best: 988
+Current best: 991
+Current best: 989
+Current best: 985
+Current best: 987
+Current best: 988
+Current best: 986
+Current best: 986
+Current best: 985
+Current best: 985
+Current best: 985
+Current best: 986
+Current best: 987
+Current best: 986
+Current best: 986
+Current best: 985
+Current best: 986
+Current best: 985
+Current best: 985
+Current best: 986
+Current best: 986
+Current best: 987
+Current best: 987
+Current best: 986
+Current best: 985
+Current best: 986
+Current best: 986
+Current best: 987
+Current best: 988
+Current best: 988
+Current best: 987
+Current best: 986
+Current best: 986
+Current best: 985
+Current best: 987
+Current best: 989
+Current best: 988
+Current best: 986
+Current best: 985
+Current best: 985
+Current best: 985
+Current best: 986
+Current best: 986
+Current best: 986
+Current best: 986
+Current best: 987
+Current best: 987
+Current best: 985
+Current best: 990
+Current best: 990
+Current best: 989
+Current best: 990
+Current best: 988
+Current best: 989
+Current best: 989
+Current best: 989
+Current best: 985
+Current best: 986
+Current best: 985
+Current best: 988
+Current best: 987
+Current best: 985
+Current best: 986
+Current best: 987
+Current best: 985
+Current best: 986
+Current best: 985
+Current best: 986
+Current best: 985
+Current best: 986
+Current best: 985
+Current best: 985
+Current best: 987
+Current best: 985
+Current best: 987
+Current best: 986
+Current best: 988
+Current best: 987
+Current best: 988
+Current best: 987
+Current best: 987
+Current best: 987
+Current best: 989
+Current best: 991
+Current best: 989
+Current best: 991
+Current best: 992
+Current best: 988
+Current best: 988
+Current best: 987
+Current best: 989
+Current best: 986
+Current best: 986
+Current best: 991
+Current best: 985
+Current best: 985
+Current best: 987
+Current best: 987
+Current best: 988
+Current best: 987
+Current best: 987
+Current best: 986
+Current best: 987
+Current best: 986
+Current best: 986
+Current best: 986
+Current best: 986
+Current best: 986
+Current best: 986
+Current best: 985
+Current best: 985
+Current best: 987
+Current best: 985
+Current best: 986
+Current best: 987
+Current best: 987
+Current best: 987
+Current best: 988
+Current best: 987
+Current best: 986
+Current best: 987
+Current best: 985
+Current best: 987
+Current best: 988
+Current best: 987
+Current best: 987
+Current best: 985
+Current best: 985
+Current best: 985
+Current best: 985
+Current best: 988
+Current best: 989
+Current best: 988
+Current best: 985
+Current best: 988
+Current best: 989
+Current best: 986
+Current best: 985
+Current best: 987
+Current best: 986
+Current best: 986
+Current best: 987
+Current best: 988
+Current best: 988
+Current best: 988
+Current best: 985
+Current best: 987
+Current best: 987
+Current best: 988
+Current best: 987
+Current best: 985
+Current best: 985
+Current best: 986
+Current best: 988
+Current best: 986
+Current best: 989
+Current best: 990
+Current best: 989
+Current best: 988
+Current best: 988
+Current best: 988
+Current best: 988
+Current best: 988
+Current best: 988
+Current best: 988
+Current best: 988
+Current best: 988
+Current best: 992
+Current best: 988
+Current best: 990
+Current best: 988
+Current best: 989
+Current best: 988
+Current best: 989
+Current best: 988
+Current best: 989
+Current best: 988
+Current best: 990
+Current best: 988
+Current best: 990
+Current best: 988
+Current best: 988
+Current best: 990
+Current best: 988
+Current best: 990
+Current best: 989
+Current best: 991
+Current best: 991
+Current best: 990
+Current best: 989
+Current best: 992
+Current best: 990
+Current best: 990
+Current best: 990
+Current best: 988
+Current best: 989
+Current best: 990
+Current best: 988
+Current best: 990
+Current best: 988
+Current best: 989
+Current best: 988
+Current best: 991
+Current best: 989
+Current best: 991
+Current best: 989
+Current best: 989
+Current best: 989
+Current best: 990
+Current best: 989
+Current best: 989
+Current best: 988
+Current best: 990
+Current best: 990
+Current best: 990
+Current best: 990
+Current best: 990
+Current best: 990
+Current best: 989
+Current best: 988
+Current best: 989
+Current best: 988
+Current best: 988
+Current best: 989
+Current best: 988
+Current best: 988
+Current best: 988
+Current best: 988
+Current best: 988
+Current best: 988
+Current best: 989
+Current best: 989
+Current best: 988
+Current best: 989
+Current best: 989
+Current best: 991
+Current best: 991
+Current best: 988
+Current best: 989
+Current best: 989
+Current best: 988
+Current best: 989
+Current best: 989
+Current best: 990
+Current best: 988
+Current best: 990
+Current best: 990
+Current best: 994
+Current best: 991
+Current best: 989
+Current best: 989
+Current best: 991
+Current best: 990
+Current best: 990
+Current best: 989
+Current best: 989
+Current best: 988
+Current best: 988
+Current best: 988
+Current best: 988
+Current best: 988
+Current best: 989
+Current best: 990
+Current best: 990
+Current best: 990
+Current best: 990
+Current best: 989
+Current best: 988
+Current best: 990
+Current best: 990
+Current best: 991
+Current best: 989
+Current best: 993
+Current best: 992
+Current best: 991
+Current best: 993
+Current best: 989
+Current best: 993
+Current best: 989
+Current best: 993
+Current best: 988
+Current best: 990
+Current best: 990
+Current best: 992
+Current best: 990
+Current best: 990
+Current best: 988
+Current best: 994
+Current best: 996
+Current best: 993
+Current best: 992
+Current best: 992
+Current best: 990
+Current best: 988
+Current best: 989
+Current best: 989
+Current best: 989
+Current best: 989
+Current best: 989
+Current best: 989
+Current best: 989
+Current best: 990
+Current best: 990
+Current best: 988
+Current best: 990
+Current best: 989
+Current best: 991
+Current best: 992
+Current best: 988
+Current best: 992
+Current best: 990
+Current best: 992
+Current best: 988
+Current best: 992
+Current best: 989
+Current best: 991
+Current best: 989
+Current best: 988
+Current best: 990
+Current best: 988
+Current best: 988
+Current best: 988
+Current best: 989
+Current best: 989
+Current best: 989
+Current best: 988
+Current best: 988
+Current best: 988
+Current best: 989
+Current best: 990
+Current best: 988
+Current best: 988
+Current best: 988
+Current best: 990
+Current best: 991
+Current best: 990
+Current best: 991
+Current best: 991
+Current best: 989
+Current best: 990
+Current best: 990
+Current best: 990
+Current best: 990
+Current best: 990
+Current best: 989
+Current best: 988
+Current best: 989
+Current best: 989
+Current best: 990
+Current best: 989
+Current best: 988
+Current best: 988
+Current best: 989
+Current best: 990
+Current best: 988
+Current best: 989
+Current best: 989
+Current best: 989
+Current best: 989
+Current best: 989
+Current best: 989
+Current best: 989
+Current best: 989
+Current best: 992
+Current best: 988
+Current best: 989
+Current best: 989
+Current best: 990
+Current best: 989
+Current best: 988
+Current best: 990
+Current best: 990
+Current best: 990
+Current best: 991
+Current best: 989
+Current best: 990
+Current best: 991
+Current best: 990
+Current best: 991
+Current best: 990
+Current best: 991
+Current best: 990
+Current best: 991
+Current best: 991
+Current best: 989
+Current best: 990
+Current best: 990
+Current best: 989
+Current best: 991
+Current best: 989
+Current best: 990
+Current best: 992
+Current best: 990
+Current best: 991
+Current best: 989
+Current best: 990
+Current best: 989
+Current best: 993
+Current best: 989
+Current best: 990
+Current best: 990
+Current best: 994
+Current best: 990
+Current best: 991
+Current best: 989
+Current best: 989
+Current best: 989
+Current best: 993
+Current best: 993
+Current best: 992
+Current best: 992
+Current best: 989
+Current best: 991
+Current best: 994
+Current best: 994
+Current best: 996
+Current best: 997
+Current best: 997
+Current best: 994
+Current best: 993
+Current best: 990
+Current best: 993
+Current best: 992
+Current best: 989
+Current best: 991
+Current best: 989
+Current best: 991
+Current best: 994
+Current best: 993
+Current best: 989
+Current best: 990
+Current best: 991
+Current best: 992
+Current best: 991
+Current best: 991
+Current best: 991
+Current best: 996
+Current best: 992
+Current best: 993
+Current best: 993
+Current best: 994
+Current best: 992
+Current best: 993
+Current best: 994
+Current best: 992
+Current best: 993
+Current best: 994
+Current best: 995
+Current best: 994
+Current best: 994
+Current best: 992
+Current best: 995
+Current best: 992
+Current best: 993
+Current best: 994
+Current best: 992
+Current best: 993
+Current best: 992
+Current best: 992
+Current best: 992
+Current best: 992
+Current best: 993
+Current best: 992
+Current best: 992
+Current best: 992
+Current best: 992
+Current best: 992
+Current best: 992
+Current best: 992
+Current best: 992
+Current best: 992
+Current best: 992
+Current best: 992
+Current best: 992
+Current best: 994
+Current best: 992
+Current best: 993
+Current best: 992
+Current best: 994
+Current best: 995
+Current best: 994
+Current best: 993
+Current best: 992
+Current best: 992
+Current best: 992
+Current best: 993
+Current best: 993
+Current best: 993
+Current best: 993
+Current best: 992
+Current best: 994
+Current best: 994
+Current best: 994
+Current best: 992
+Current best: 994
+Current best: 992
+Current best: 992
+Current best: 994
+Current best: 994
+Current best: 994
+Current best: 994
+Current best: 994
+Current best: 994
+Current best: 992
+Current best: 992
+Current best: 994
+Current best: 992
+Current best: 992
+Current best: 992
+Current best: 993
+Current best: 992
+Current best: 993
+Current best: 994
+Current best: 996
+Current best: 995
+Current best: 996
+Current best: 995
+Current best: 994
+Current best: 995
+Current best: 995
+Current best: 995
+Current best: 995
+Current best: 993
+Current best: 995
+Current best: 995
+Current best: 994
+Current best: 994
+Current best: 994
+Current best: 993
+Current best: 994
+Current best: 993
+Current best: 994
+Current best: 993
+Current best: 993
+Current best: 993
+Current best: 993
+Current best: 993
+Current best: 993
+Current best: 993
+Current best: 993
+Current best: 994
+Current best: 994
+Current best: 994
+Current best: 994
+Current best: 994
+Current best: 993
+Current best: 995
+Current best: 995
+Current best: 994
+Current best: 995
+Current best: 994
+Current best: 993
+Current best: 994
+Current best: 996
+Current best: 997
+Current best: 997
+Current best: 995
+Current best: 997
+Current best: 998
+Current best: 996
+Current best: 998
+Current best: 994
+Current best: 994
+Current best: 993
+Current best: 993
+Current best: 993
+Current best: 993
+Current best: 995
+Current best: 997
+Current best: 996
+Current best: 994
+Current best: 995
+Current best: 994
+Current best: 996
+Current best: 997
+Current best: 994
+Current best: 996
+Current best: 994
+Current best: 993
+Current best: 995
+Current best: 993
+Current best: 994
+Current best: 996
+Current best: 993
+Current best: 994
+Current best: 995
+Current best: 993
+Current best: 995
+Current best: 993
+Current best: 996
+Current best: 994
+Current best: 996
+Current best: 995
+Current best: 995
+Current best: 995
+Current best: 995
+Current best: 995
+Current best: 994
+Current best: 994
+Current best: 993
+Current best: 993
+Current best: 993
+Current best: 993
+Current best: 994
+Current best: 993
+Current best: 996
+Current best: 998
+Current best: 994
+Current best: 994
+Current best: 994
+Current best: 993
+Current best: 993
+Current best: 994
+Current best: 994
+Current best: 993
+Current best: 993
+Current best: 993
+Current best: 993
+Current best: 993
+Current best: 993
+Current best: 993
+Current best: 996
+Current best: 994
+Current best: 995
+Current best: 997
+Current best: 993
+Current best: 996
+Current best: 993
+Current best: 996
+Current best: 993
+Current best: 994
+Current best: 993
+Current best: 993
+Current best: 994
+Current best: 995
+Current best: 994
+Current best: 995
+Current best: 996
+Current best: 993
+Current best: 995
+Current best: 993
+Current best: 994
+Current best: 993
+Current best: 996
+Current best: 993
+Current best: 995
+Current best: 995
+Current best: 998
+Current best: 996
+Current best: 999
+Current best: 998
+Current best: 995
+Current best: 994
+Current best: 995
+Current best: 996
+Current best: 996
+Current best: 993
+Current best: 993
+Current best: 1000
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...]
+```
