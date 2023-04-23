@@ -6,7 +6,7 @@ defmodule Genetic do
   def run(fitness_fn, genotype_fn, max_fitness, opts \\ []) do
     population = initialize(genotype_fn, opts) 
     population
-    |> evolve(fitness_fn, genotype_fn, max_fitness, opts)
+      |> evolve(fitness_fn, genotype_fn, max_fitness, opts)
   end
 
   def initialize(geneotype_fn, opts \\ []) do
