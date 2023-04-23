@@ -3,17 +3,18 @@ defmodule Genetic do
   Documentation for `Genetic`.
   """
 
-  def run(fitness_fn, genotype_fn, max_fitness) do
-    population = initialize(genotype_fn) 
+  def run(fitness_fn, genotype_fn, max_fitness, opts \\ []) do
+    population = initialize(genotype_fn, opts) 
     population
-    |> evolve(fitness_fn, genotype_fn, max_fitness)
+    |> evolve(fitness_fn, genotype_fn, max_fitness, opts)
   end
 
-  def initialize(geneotype_fn) do
-    for _ <- 1..100, do: geneotype_fn.()
+  def initialize(geneotype_fn, opts \\ []) do
+    population_size = Keyword.get(opts, :population_size, 100)
+    for _ <- 1..population_size, do: geneotype_fn.()
   end
 
-  def evolve(population, fitness_fn, genotype_fn, max_fitness) do
+  def evolve(population, fitness_fn, genotype_fn, max_fitness, opts \\ []) do
     population = evaluate(population, fitness_fn)
     best = hd(population)
     IO.puts("Current Best: #{fitness_fn.(best)}")
@@ -21,25 +22,25 @@ defmodule Genetic do
       best
     else
       population
-      |> select()
-      |> crossover()
-      |> mutate()
-      |> evolve(fitness_fn, genotype_fn, max_fitness)
+      |> select(opts)
+      |> crossover(opts)
+      |> mutate(opts)
+      |> evolve(fitness_fn, genotype_fn, max_fitness, opts)
     end
   end
 
-  def evaluate(population, fitness_fn) do
+  def evaluate(population, fitness_fn, opts \\ []) do
     population
     |> Enum.sort_by(fitness_fn, &>=/2)
   end
 
-  def select(population) do
+  def select(population, opts \\ []) do
     population
     |> Enum.chunk_every(2)
     |> Enum.map(&List.to_tuple/1)
   end
 
-  def crossover(population) do
+  def crossover(population, opts \\ []) do
     population
     |> Enum.reduce([], fn {p1, p2}, acc ->
       cx_point = :rand.uniform(length(p1))
@@ -50,7 +51,7 @@ defmodule Genetic do
     end)
   end
 
-  def mutate(population) do
+  def mutate(population, opts \\ []) do
     population
     |> Enum.map(fn chromose ->
       if :rand.uniform() < 0.05 do
