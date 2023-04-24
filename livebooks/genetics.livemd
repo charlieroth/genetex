@@ -1,0 +1,337 @@
+<!-- livebook:{"persist_outputs":true} -->
+
+# Genetic Algorithms In Exlixir: One Max
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.9.2"}
+])
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+:ok
+```
+
+## Genetic Algorithms: A Framework
+
+#### Overview Of A Genetic Algorithm
+
+```mermaid
+graph LR;
+
+A[Initialize Population]-->B[Evaluate Population]
+B-->C[Select Parents]
+C-->D[Create Children]
+D-->E[Mutate Children]
+E-->B
+```
+
+Each step in this visualization performs a transformation and brings you closer to a solution
+
+Most Genetic Algorithms follow a similar structure to the above diagram
+
+```elixir
+defmodule Types.Chromose do
+  @type t :: %__MODULE__{
+          genes: Enum.t(),
+          size: integer(),
+          fitness: number(),
+          age: integer()
+        }
+
+  @enfore_keys [:genes]
+
+  defstruct [:genes, size: 0, fitness: 0.0, age: 0]
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+warning: module attribute @enfore_keys was set but never used
+  github.com/charlieroth/genetex/livebooks/one_max.livemd#cell:4fxnjl6n34fx4hnxpwcvgo6ebgwtajtq:9
+
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, Types.Chromose, <<70, 79, 82, 49, 0, 0, 9, ...>>,
+ %Types.Chromose{genes: nil, size: 0, fitness: 0.0, age: 0}}
+```
+
+```elixir
+defmodule Problem do
+  alias Types.Chromose
+  @callback genotype() :: Chromose.t()
+  @callback fitness(Chromose.t()) :: number()
+  @callback terminate?(Enum.t()) :: boolean()
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, Problem, <<70, 79, 82, 49, 0, 0, 6, ...>>, :ok}
+```
+
+```elixir
+defmodule Genetic do
+  alias Types.Chromose
+
+  def run(problem, opts \\ []) do
+    population = initialize(&problem.genotype/0, opts)
+    population |> evolve(problem, opts)
+  end
+
+  def initialize(genotype_fn, opts \\ []) do
+    population_size = Keyword.get(opts, :population_size, 100)
+    for _ <- 1..population_size, do: genotype_fn.()
+  end
+
+  def evolve(population, problem, opts \\ []) do
+    population = evaluate(population, &problem.fitness/1, opts)
+    best = hd(population)
+    IO.puts("Current Best: #{best.fitness}")
+
+    if problem.terminate?(population) do
+      best
+    else
+      population
+      |> select(opts)
+      |> crossover(opts)
+      |> mutate(opts)
+      |> evolve(problem, opts)
+    end
+  end
+
+  def evaluate(population, fitness_fn, opts \\ []) do
+    population
+    |> Enum.map(fn chromose ->
+      fitness = fitness_fn.(chromose)
+      age = chromose.age + 1
+      %Chromose{chromose | fitness: fitness, age: age}
+    end)
+    |> Enum.sort_by(& &1.fitness, &>=/2)
+  end
+
+  def select(population, opts \\ []) do
+    population
+    |> Enum.chunk_every(2)
+    |> Enum.map(&List.to_tuple/1)
+  end
+
+  def crossover(population, opts \\ []) do
+    population
+    |> Enum.reduce([], fn {p1, p2}, acc ->
+      cx_point = :rand.uniform(length(p1.genes))
+
+      {{h1, t1}, {h2, t2}} = {
+        Enum.split(p1.genes, cx_point),
+        Enum.split(p2.genes, cx_point)
+      }
+
+      {c1, c2} = {
+        %Chromose{p1 | genes: h1 ++ t2},
+        %Chromose{p2 | genes: h2 ++ t1}
+      }
+
+      [c1, c2 | acc]
+    end)
+  end
+
+  def mutate(population, opts \\ []) do
+    population
+    |> Enum.map(fn chromose ->
+      if :rand.uniform() < 0.05 do
+        %Chromose{chromose | genes: Enum.shuffle(chromose.genes)}
+      else
+        chromose
+      end
+    end)
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+warning: variable "opts" is unused (if the variable is not meant to be used, prefix it with an underscore)
+  github.com/charlieroth/genetex/livebooks/one_max.livemd#cell:bbly4wmz2zaeklf7ccgeoobp4mogft55:29: Genetic.evaluate/3
+
+warning: variable "opts" is unused (if the variable is not meant to be used, prefix it with an underscore)
+  github.com/charlieroth/genetex/livebooks/one_max.livemd#cell:bbly4wmz2zaeklf7ccgeoobp4mogft55:39: Genetic.select/2
+
+warning: variable "opts" is unused (if the variable is not meant to be used, prefix it with an underscore)
+  github.com/charlieroth/genetex/livebooks/one_max.livemd#cell:bbly4wmz2zaeklf7ccgeoobp4mogft55:45: Genetic.crossover/2
+
+warning: variable "opts" is unused (if the variable is not meant to be used, prefix it with an underscore)
+  github.com/charlieroth/genetex/livebooks/one_max.livemd#cell:bbly4wmz2zaeklf7ccgeoobp4mogft55:62: Genetic.mutate/2
+
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, Genetic, <<70, 79, 82, 49, 0, 0, 28, ...>>, {:mutate, 2}}
+```
+
+## One-Max
+
+The One-Max problem is a trivial problem often used to introduce the concept of genetic algorithms. It's incredibly simple, but it's great for introducing many of the critical aspects of a genetic algorithm.
+
+The problem boils down to one question: what is the maximum sum of a bitstring (a string consisting of only 1s and 0s) of length N?
+
+```elixir
+defmodule Problem.OneMax do
+  @behaviour Problem
+
+  alias Types.Chromose
+
+  @impl Problem
+  def genotype() do
+    genes = for _ <- 1..42, do: Enum.random(0..1)
+    %Chromose{genes: genes, size: 42}
+  end
+
+  @impl Problem
+  def fitness(chromose) do
+    Enum.sum(chromose.genes)
+  end
+
+  @impl Problem
+  def terminate?([best | _]) do
+    best.fitness() == 42
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, Problem.OneMax, <<70, 79, 82, 49, 0, 0, 11, ...>>, {:terminate?, 1}}
+```
+
+```elixir
+solution = Genetic.run(Problem.OneMax)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+Current Best: 28
+Current Best: 30
+Current Best: 32
+Current Best: 32
+Current Best: 33
+Current Best: 34
+Current Best: 33
+Current Best: 33
+Current Best: 34
+Current Best: 34
+Current Best: 34
+Current Best: 35
+Current Best: 34
+Current Best: 34
+Current Best: 35
+Current Best: 35
+Current Best: 36
+Current Best: 37
+Current Best: 36
+Current Best: 37
+Current Best: 37
+Current Best: 38
+Current Best: 40
+Current Best: 38
+Current Best: 38
+Current Best: 38
+Current Best: 39
+Current Best: 38
+Current Best: 39
+Current Best: 39
+Current Best: 40
+Current Best: 40
+Current Best: 39
+Current Best: 40
+Current Best: 39
+Current Best: 39
+Current Best: 40
+Current Best: 40
+Current Best: 40
+Current Best: 40
+Current Best: 40
+Current Best: 40
+Current Best: 40
+Current Best: 41
+Current Best: 41
+Current Best: 41
+Current Best: 41
+Current Best: 41
+Current Best: 41
+Current Best: 41
+Current Best: 41
+Current Best: 41
+Current Best: 41
+Current Best: 41
+Current Best: 41
+Current Best: 42
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+%Types.Chromose{
+  genes: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  size: 42,
+  fitness: 42,
+  age: 56
+}
+```
+
+## Speller
+
+Words can also be spelled using a genetic algorithm. The `Speller` problem will use the genetic algorithm framework to spell the word *"supercalifragilisticexpialidocious"*
+
+```elixir
+defmodule Problem.Speller do
+  @behaviour Problem
+
+  alias Types.Chromose
+
+  def genotype() do
+    genes = Stream.repeatedly(fn -> Enum.random(?a..?z) end) |> Enum.take(34)
+    %Chromose{genes: genes, size: 34}
+  end
+
+  def fitness(chromose) do
+    target = "supercalifragilisticexpialidocious"
+    guess = List.to_string(chromose.genes)
+    String.jaro_distance(target, guess)
+  end
+
+  def terminate?([best | _]) do
+    best.fitness == 1
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, Problem.Speller, <<70, 79, 82, 49, 0, 0, 11, ...>>, {:terminate?, 1}}
+```
+
+Solving the problem of "Speller" is a difficult one and will take a while so only uncomment the below cell if you want to run it
+
+```elixir
+# solution = Genetic.run(Problem.Speller)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+nil
+```
